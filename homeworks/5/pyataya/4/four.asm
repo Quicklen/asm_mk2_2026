@@ -68,14 +68,14 @@ next_symbol:
     ; ---- печать символа ----
     cmp al, 0Eh
 	jb nepechat
-pizda:
+vivo:
     mov dl,al
     mov ah,02h
     int 21h
     jmp after_char
 nepechat:
 	cmp al, 07h
-	jb pizda
+	jb vivo
 	mov dl, '-'
     mov ah,02h
     int 21h

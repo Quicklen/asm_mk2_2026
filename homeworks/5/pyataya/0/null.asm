@@ -78,7 +78,7 @@ print:
 	je increment
 	mov [schet2], 0
 
-gay:
+incremnt:
 	inc [schet]
 	cmp [schet], 5
 	je obnul
@@ -94,7 +94,7 @@ increment:
 	inc [schet2]
 	cmp [schet2], 2
 	je exit
-	jmp gay
+	jmp incremnt
 exit:
 	mov ax, 4c00h
 	int 21h
