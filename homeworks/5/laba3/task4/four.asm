@@ -96,7 +96,7 @@ after_char:
     shr bh,4
     mov bl,bh
     xor bh,bh
-    mov dl,hex[bx]
+    mov dl, byte ptr[hex + bx]
     mov ah,02h
     int 21h
 
@@ -108,7 +108,7 @@ after_char:
 	shr bh, 4
 	mov bl,bh
     xor bh,bh
-    mov dl,hex[bx]
+    mov dl, byte ptr[hex + bx]
     mov ah,02h
     int 21h
 	
