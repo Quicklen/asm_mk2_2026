@@ -28,6 +28,7 @@ data segment para public
 	max db 254
 	len db ?
 	mul_index db 0
+	example_expression db "Num1 op Num2", "$"
 	
 	result_buf db 16 dup (?)
 	result_buf_hex db 9 dup(?)
@@ -166,6 +167,20 @@ _exit0:
     mov sp, bp
     pop bp
     ret
+
+_example_for_expression:
+	push bp
+	mov bp, sp
+
+	mov dx, offset example_expression
+	mov ah, 09h
+	int 21h
+
+	call _putnewline
+
+	mov sp, bp
+	pop bp
+	ret
     
 _uatoi:
 	push bp
@@ -253,10 +268,11 @@ __ah_loop:
 	jmp __ah_shift_ok
 
 __ah_check_overflow:
-	and ah, 0F0h
-	cmp ah, 0
-	je __ah_shift_ok
-	jmp __ah_overflow
+	; and ah, 0F0h
+	; cmp ah, 0
+	test ah, 0F0h   
+    jnz __ah_overflow
+    jmp __ah_shift_ok
 
 __ah_shift_ok:
 	shl ax, 4
@@ -570,6 +586,7 @@ _input:
     push si
     push di
     push bx
+	call _example_for_expression
 
     mov dx, offset str1
     mov byte ptr [str1], 254
@@ -947,6 +964,7 @@ _calc:
     push bp
     mov bp, sp
 	clc
+
 	
 	call _check_format_num1
     push offset buf_num1
@@ -1126,12 +1144,13 @@ _putstr:
     mov si, [bp+4]
     
 _ps_loop:
-    lodsb
+	mov al, [si]  
     cmp al, 0
     je _ps_end
     mov dl, al
     mov ah, 2
     int 21h
+	inc si
     jmp _ps_loop
     
 _ps_end:
