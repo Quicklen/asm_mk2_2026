@@ -4,7 +4,7 @@
 ;   0010 - read/write access
 ; short fopen(short access_mode, const char* filename)
 ; cf flag - as error and return -1
-fopen proc near 
+_fopen proc near 
     push bp
     mov bp, sp
     pushregs cx, dx
@@ -25,12 +25,12 @@ fopen_done:
 
 fopen_error:
     jmp fopen_done
-fopen endp
+_fopen endp
 
 
 ; bool fclose(short d)
 ; cf - flag and return -1
-fclose proc near
+_fclose proc near
     push bp
     mov bp, sp
     pushregs bx
@@ -51,7 +51,7 @@ fclose_error:
     mov ax, -1
     jmp fclose_done
 
-fclose endp
+_fclose endp
 
 ; rel = 
 ; 0 - from file start
@@ -150,7 +150,7 @@ fread endp
 
 ; ds:buffer
 ; short fwrite(short d, char* buffer, short size) 
-fwrite proc near
+_fwrite proc near
     push bp
     mov bp, sp
     
@@ -163,7 +163,7 @@ fwrite proc near
     mov sp, bp
     pop bp
     ret
-fwrite endp
+_fwrite endp
 
 ; fread to string
 ; char* freadtos(short d, short count_of_bytes)
@@ -216,3 +216,40 @@ freadtos_alloc_failed:
     stc
     jmp freadtos_done
 freadtos endp
+
+
+_fget_ch PROC NEAR
+        push    bp
+        mov     bp, sp
+        sub     sp, 22           ; local: ret (byte) at [bp-1], buf[20] at [bp-22]
+
+        push ds
+
+        mov ax, stack
+        mov ds, ax
+
+        ; DOS service: read from file handle
+        mov     ah, 3Fh          ; READ
+        mov     bx, [bp+arg1]       ; file descriptor
+        mov     cx, 1            ; read 1 byte
+        lea     dx, [bp-22]      ; buffer address
+        int     21h
+
+        pop ds
+
+        jc      error            ; carry set → error
+        cmp     ax, 1            ; did we read exactly 1 byte?
+        jne     error
+
+        mov     al, [bp-22]      ; get the character
+        mov     [bp-1], al       ; store into 'ret'
+        jmp     done
+
+error:
+        mov     al, 0FFh         ; return -1
+
+done:
+        mov     sp, bp
+        pop     bp
+        ret
+_fget_ch ENDP

@@ -30,14 +30,14 @@ getchar endp
 
 ; void putstr(const char *str)
 ; выводит строку на экран (до завершающего нуля), адрес которой передан в качестве аргумента
-putstr proc near
+_putstr proc near
     push bp
     mov bp, sp
     pushregs cx, dx, bx, ax
 
     ; находим длину строки
     push word ptr [bp + 4] 
-    call strlen
+    call _strlen
     add sp, 2
     
     ; выводим строку
@@ -51,7 +51,7 @@ putstr proc near
     mov sp, bp
     pop bp
     ret
-putstr endp
+_putstr endp
 
 ; void getstr(const char *str, int max_len)
 ; читает строку с клавиатуры (либо max_len - 1 байт, либо до перевода строки) и сохраняет её в память, 
@@ -60,12 +60,12 @@ getstr proc near
     push bp
     mov bp, sp
     
-    dec word ptr [bp + 6] ; уменьшаем требуемую длину на 1 (max_len - 1)
-    mov bx, word ptr [bp + 4] ; адрес начала строки
+    dec word ptr [bp + 4] ; уменьшаем требуемую длину на 1 (max_len - 1)
+    mov bx, word ptr [bp + 6] ; адрес начала строки
     mov si, 0 ; счётчик
  
 getscyc: 
-    cmp si, word ptr [bp + 6]
+    cmp si, word ptr [bp + 4]
     je getsret
     
     call getchar

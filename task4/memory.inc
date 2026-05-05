@@ -1,4 +1,4 @@
-﻿
+
 ; bool InitMem(void* segProgramStartAddress, void* lastSegAddr, void* offsetProgramEnd);
 InitMem proc near 
 	push bp
