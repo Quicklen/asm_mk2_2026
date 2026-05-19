@@ -1,3 +1,12 @@
+EOF EQU 0FFh
+
+ACCESS_READ     EQU 0
+ACCESS_WRITE    EQU 1
+
+SEEK_START equ 0
+SEEK_CURRENT_POS equ 1
+SEEK_END equ 2
+
 ; access_mode = 
 ;   0000 - read access
 ;   0001 - write access

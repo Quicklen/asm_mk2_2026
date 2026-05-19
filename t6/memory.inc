@@ -133,3 +133,73 @@ ReallocMem proc near
 	pop bp
 	ret
 ReallocMem endp
+
+; ds:[dest]
+; es:[src]
+; void memcpy(void* dest, void* src, short bytes) 
+_memcpy proc near
+	push bp
+	mov bp, sp
+
+	mov si, word ptr[bp+arg1]   ; dest offset
+	mov di, word ptr[bp+arg2]   ; src offset
+	mov cx, word ptr[bp+arg3]   ; byte count
+
+	; Swap segments so that ds points to src and es to dest
+	push es
+	mov ax, ds
+	mov es, ax
+	pop ds          ; ds = original es (src seg), es = original ds (dest seg)
+
+	; Swap indices to match new segments: si = src offset, di = dest offset
+	xchg si, di
+
+	cld
+	rep movsb       ; copy from ds:si to es:di
+
+	; Restore original segment registers
+	push es
+	mov ax, ds
+	mov es, ax
+	pop ds          ; ds and es back to original values
+
+	mov sp, bp
+	pop bp
+	ret
+_memcpy endp
+
+
+_memset	proc	near
+	push	bp
+	mov	bp,sp
+	push	si
+   ;	
+   ;	{
+   ;	    short i = 0;
+   ;	
+	xor	si,si
+   ;	
+   ;	    for(i = 0; i < size; i += 1)
+   ;	
+	xor	si,si
+	jmp	short loop_check
+loop_start:
+   ;	
+   ;	    {
+   ;	        addr[i] = b;
+   ;	
+	mov	bx,word ptr [bp+arg1]
+	mov	al,byte ptr [bp+arg2]
+	mov	byte ptr [bx+si],al
+	inc	si
+loop_check:
+	cmp	si,word ptr [bp+arg3]
+	jl	short loop_start
+   ;	
+   ;	    }
+   ;	}
+   ;	
+	pop	si
+	pop	bp
+	ret	
+_memset	endp
