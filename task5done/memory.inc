@@ -1,4 +1,4 @@
-﻿
+
 ; bool InitMem(void* segProgramStartAddress, void* lastSegAddr, void* offsetProgramEnd);
 InitMem proc near 
 	push bp
@@ -40,27 +40,41 @@ InitMem endp
 
 ; void* AllocMem(unsigned word sizeInBytes) -> сегментный адрес выделенного блока;
 AllocMem proc near	
+	_AllocMem_localSize equ 1*2
 	push bp
 	mov bp, sp
+	sub sp, _AllocMem_localSize
 	
-	; Выравнивание вверх по границе параграфа
+	; DWORD AlignToTopByPara (DWORD value) {
+		; DWORD mask = ~ (16 - 1);
+		; return (value + 16 - 1) & mask;
+	; }
+	; выравнивание вверх по границе параграфа
+	mov bx, 0fff0h	; маска для выравнивания
 	mov ax, [bp+arg1]
-	add ax, 0fh
-	mov bx, 0fff0h
+	add ax, 0fh		; граница выравнивания
 	and bx, ax
-	; Байты в параграфы (bytes / 16)
+	; байты в параграфы (bytes / 16)
 	shr bx, 4
+	mov [bp+var1], bx
 	
-	; Выделяем память
+	mov bx, 0FFFFh
 	mov ah, 48h
+	int 21h
+	cmp bx, [bp+var1]
+	jb _AM_fail
+	
+	mov ah, 48h
+	mov bx, [bp+var1]
 	int 21h
 	jnc _AM_exit
 	
-	; Ошибка
+	; handle error
+
 	_AM_fail:
-	xor ax, ax
-	
+	mov ax, 0
 	_AM_exit:
+	add sp, _AllocMem_localSize
 	mov sp, bp
 	pop bp
 	ret
