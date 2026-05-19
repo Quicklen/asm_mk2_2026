@@ -40,41 +40,27 @@ InitMem endp
 
 ; void* AllocMem(unsigned word sizeInBytes) -> сегментный адрес выделенного блока;
 AllocMem proc near	
-	_AllocMem_localSize equ 1*2
 	push bp
 	mov bp, sp
-	sub sp, _AllocMem_localSize
 	
-	; DWORD AlignToTopByPara (DWORD value) {
-		; DWORD mask = ~ (16 - 1);
-		; return (value + 16 - 1) & mask;
-	; }
-	; выравнивание вверх по границе параграфа
-	mov bx, 0fff0h	; маска для выравнивания
+	; Выравнивание вверх по границе параграфа
 	mov ax, [bp+arg1]
-	add ax, 0fh		; граница выравнивания
+	add ax, 0fh
+	mov bx, 0fff0h
 	and bx, ax
-	; байты в параграфы (bytes / 16)
+	; Байты в параграфы (bytes / 16)
 	shr bx, 4
-	mov [bp+var1], bx
 	
-	mov bx, 0FFFFh
+	; Выделяем память
 	mov ah, 48h
-	int 21h
-	cmp bx, [bp+var1]
-	jb _AM_fail
-	
-	mov ah, 48h
-	mov bx, [bp+var1]
 	int 21h
 	jnc _AM_exit
 	
-	; handle error
-
+	; Ошибка
 	_AM_fail:
-	mov ax, 0
+	xor ax, ax
+	
 	_AM_exit:
-	add sp, _AllocMem_localSize
 	mov sp, bp
 	pop bp
 	ret

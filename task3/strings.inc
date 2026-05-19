@@ -749,3 +749,208 @@ strlen_done:
     pop bp
     ret
 strlen endp
+
+
+
+; word split_to_lines_v2(word seg_str)
+; УПРОЩЕННАЯ и ИСПРАВЛЕННАЯ версия
+split_to_lines_v2 proc near
+    push bp
+    mov bp, sp
+    sub sp, 8                      ; [bp-2] = line_count
+                                   ; [bp-4] = start_pos
+                                   ; [bp-6] = arr_seg
+                                   ; [bp-8] = arr_idx
+    pushregs si, di, ds, es, bx, cx, dx
+    
+    ; Инициализация
+    mov word ptr [bp-2], 0         ; line_count = 0
+    mov word ptr [bp-4], 0         ; start_pos = 0
+    mov word ptr [bp-6], 0         ; arr_seg = 0
+    mov word ptr [bp-8], 0         ; arr_idx = 0
+    
+    mov es, word ptr [bp+arg1]     ; es = сегмент текста
+    
+    ; Проверяем, не пустой ли текст
+    cmp byte ptr es:[0], 0
+    je sl2_empty
+    
+    ; --- ПЕРВЫЙ ПРОХОД: считаем количество строк ---
+    xor di, di                     ; di = текущая позиция
+    xor cx, cx                     ; cx = счетчик строк (пока 0)
+    
+count_loop:
+    mov al, byte ptr es:[di]
+    test al, al                    ; конец текста?
+    jz count_done
+    cmp al, 0Ah                    ; \n ?
+    jne count_next
+    inc cx                         ; увеличиваем счетчик строк
+count_next:
+    inc di
+    jmp count_loop
+    
+count_done:
+    ; Если текст не пустой, минимум 1 строка
+    cmp di, 0
+    je sl2_empty
+    inc cx                         ; +1 за последнюю строку
+    mov word ptr [bp-2], cx        ; сохраняем количество строк
+    
+    ; --- Выделяем память под массив указателей ---
+    shl cx, 1                      ; умножаем на 2 (размер слова)
+    push cx
+    call AllocMem
+    add sp, 2
+    test ax, ax
+    jz sl2_empty
+    
+    mov word ptr [bp-6], ax        ; сохраняем сегмент массива
+    
+    ; --- ВТОРОЙ ПРОХОД: копируем строки ---
+    xor di, di                     ; di = текущая позиция в тексте
+    mov word ptr [bp-4], 0         ; start_pos = 0
+    mov word ptr [bp-8], 0         ; arr_idx = 0
+    
+parse_loop:
+    mov al, byte ptr es:[di]
+    test al, al                    ; конец текста?
+    jz process_last
+    
+    cmp al, 0Ah                    ; \n ?
+    je process_current
+    
+    inc di
+    jmp parse_loop
+    
+process_current:
+    ; Нашли \n, обрабатываем текущую строку
+    mov cx, di                     ; cx = позиция \n
+    sub cx, word ptr [bp-4]        ; cx = длина строки (включая возможный \r)
+    
+    ; Проверяем на \r перед \n
+    cmp cx, 0
+    je skip_empty_line
+    
+    push di
+    dec di
+    cmp byte ptr es:[di], 0Dh      ; \r ?
+    pop di
+    jne no_cr_skip
+    dec cx                         ; убираем \r
+no_cr_skip:
+    
+    ; Выделяем память под строку
+    push cx                        ; сохраняем длину
+    inc cx                         ; +1 для нуля
+    push cx
+    call AllocMem
+    add sp, 2
+    pop cx                         ; восстанавливаем длину
+    test ax, ax
+    jz sl2_error
+    
+    ; Копируем строку
+    push es
+    push ds
+    
+    mov es, ax                     ; es = сегмент новой строки
+    mov ds, word ptr [bp+arg1]     ; ds = сегмент исходного текста
+    mov si, word ptr [bp-4]        ; si = начало строки
+    xor di, di                     ; di = 0 в новой строке
+    
+    push cx                        ; сохраняем счетчик
+    jcxz copy_done
+copy_loop:
+    mov al, byte ptr [si]
+    mov byte ptr es:[di], al
+    inc si
+    inc di
+    loop copy_loop
+copy_done:
+    mov byte ptr es:[di], 0        ; завершающий ноль
+    pop cx                         ; восстанавливаем счетчик
+    
+    pop ds
+    pop es                         ; es = сегмент исходного текста
+    
+    ; Сохраняем указатель в массив
+    push ds
+    mov ds, word ptr [bp-6]        ; ds = массив указателей
+    mov bx, word ptr [bp-8]        ; bx = индекс в массиве
+    mov word ptr [bx], ax          ; сохраняем сегмент строки
+    add word ptr [bp-8], 2         ; следующий индекс
+    pop ds
+    
+skip_empty_line:
+    ; Переходим к следующей строке
+    inc di                         ; пропускаем \n
+    mov word ptr [bp-4], di        ; новое начало
+    jmp parse_loop
+    
+process_last:
+    ; Обрабатываем последнюю строку (после последнего \n)
+    mov cx, di
+    sub cx, word ptr [bp-4]        ; длина последней строки
+    jz sl2_done                    ; если 0 - выходим
+    
+    ; Выделяем память
+    push cx
+    inc cx
+    push cx
+    call AllocMem
+    add sp, 2
+    pop cx
+    test ax, ax
+    jz sl2_error
+    
+    ; Копируем
+    push es
+    push ds
+    
+    mov es, ax
+    mov ds, word ptr [bp+arg1]
+    mov si, word ptr [bp-4]
+    xor di, di
+    
+    jcxz last_copy_done
+last_copy_loop:
+    mov al, byte ptr [si]
+    mov byte ptr es:[di], al
+    inc si
+    inc di
+    loop last_copy_loop
+last_copy_done:
+    mov byte ptr es:[di], 0
+    
+    pop ds
+    pop es
+    
+    ; Сохраняем в массив
+    push ds
+    mov ds, word ptr [bp-6]
+    mov bx, word ptr [bp-8]
+    mov word ptr [bx], ax
+    pop ds
+    
+sl2_done:
+    mov cx, word ptr [bp-2]        ; количество строк
+    mov ax, word ptr [bp-6]        ; сегмент массива
+    jmp sl2_exit
+    
+sl2_empty:
+    xor ax, ax
+    xor cx, cx
+    jmp sl2_exit
+    
+sl2_error:
+    ; Ошибка выделения памяти
+    xor ax, ax
+    xor cx, cx
+    
+sl2_exit:
+    popregs dx, cx, bx, es, ds, di, si
+    mov sp, bp
+    pop bp
+    ret
+split_to_lines_v2 endp
